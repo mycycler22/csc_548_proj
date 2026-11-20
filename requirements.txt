@@ -1,0 +1,6 @@
+pandas
+altair
+pyarrow
+vegafusion>=2.0.3
+vl-convert-python>=1.9.0
+numpy
