@@ -28,9 +28,6 @@ fpl_app/
         └── gw38.csv
 ```
 
-If your data lives somewhere else, change `DATA_DIR` at the top of `fpl/data.py`.
-Any number of gameweek files works, so a season in progress is fine.
-
 ## Run
 
 ```bash
