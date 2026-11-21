@@ -45,7 +45,4 @@ streamlit run app.py
 | `fpl/charts.py` | Altair charts (each takes pre-filtered data) |
 | `fpl/state.py` | Team/player selection that persists across pages |
 
-Settings such as the minutes cutoff (`MIN_MINUTES`), leaderboard metrics and
-percentile stats are constants at the top of `fpl/data.py`.
 
-Profiles can be linked directly: `/profile?player=<player id>`.
