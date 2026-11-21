@@ -34,6 +34,8 @@ fpl_app/
 streamlit run app.py
 ```
 
+Application Link: csc548proj-axgaa6eueraondjpjjvwrg.streamlit.app
+
 ## Layout
 
 | File | What it does |
