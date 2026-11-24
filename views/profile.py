@@ -7,9 +7,10 @@ from fpl.state import persistent_selectbox
 
 gameweek_data, players, teams = load_data()
 
-# ---------------------------------------------------------------------------
-# A ?player=<id> link (from the leaderboard, or shared) sets the selection once
-# ---------------------------------------------------------------------------
+
+# If the page link names a player (e.g. from a leaderboard click), 
+# open their profile, but only the first time so the dropdowns still work afterwards.
+
 qp = st.query_params.get("player")
 if qp and qp != st.session_state.get("_applied_player_param"):
     match = players[players["id"] == int(qp)] if qp.isdigit() else players.iloc[0:0]
@@ -18,9 +19,9 @@ if qp and qp != st.session_state.get("_applied_player_param"):
         st.session_state["player_id"] = int(match.iloc[0]["id"])
     st.session_state["_applied_player_param"] = qp
 
-# ---------------------------------------------------------------------------
-# Team -> player selection
-# ---------------------------------------------------------------------------
+# Filters the player selection down based on the team selection
+## Ex. Selecting Manchester United will only return players on Manchester United
+
 st.title("Player profile")
 
 c1, c2 = st.columns(2)
@@ -38,7 +39,7 @@ with c2:
     player_id = persistent_selectbox("Player", list(labels), "player_id",
                                      format_func=labels.get)
 
-# Keep the URL in step with the selection, so the page can be bookmarked
+# Keeps the URL in step with the selection, so the page can be bookmarked
 st.query_params["player"] = str(player_id)
 st.session_state["_applied_player_param"] = str(player_id)
 
@@ -47,9 +48,9 @@ position_pool = players[(players["element_type"] == player["element_type"]) &
                         (players["minutes"] > MIN_MINUTES)]
 points_rank = int((position_pool["total_points"] > player["total_points"]).sum()) + 1
 
-# ---------------------------------------------------------------------------
+
 # Header
-# ---------------------------------------------------------------------------
+
 st.header(player["name"])
 st.caption(f"{player['team']} · {player['element_type']}")
 
@@ -67,9 +68,9 @@ else:
 overview, form, compare, fixtures_tab = st.tabs(
     ["Overview", "Gameweek form", "Compared with position", "Fixtures"])
 
-# ---------------------------------------------------------------------------
-# Overview: percentiles + where the points come from
-# ---------------------------------------------------------------------------
+
+# Overview tab: percentiles + where the points come from
+
 with overview:
     st.subheader("Percentiles")
     st.caption(f"Ranked against {player['element_type']}s with more than {MIN_MINUTES} minutes.")
@@ -84,9 +85,8 @@ with overview:
     st.caption("Hover a segment for the raw stat and its share of points. "
                "Negative categories sit left of the zero line.")
 
-# ---------------------------------------------------------------------------
-# Gameweek form
-# ---------------------------------------------------------------------------
+## Gameweek form tab
+
 FORM_METRICS = {
     "total_points": ("Points", ",.0f"),
     "price": ("Price (£m)", ".1f"),
@@ -108,9 +108,9 @@ with form:
         dgws = ", ".join(str(g) for g in per_gw.loc[per_gw["fixtures"] > 1, "gameweek"])
         st.caption(f"Double gameweeks ({dgws}) are added together.")
 
-# ---------------------------------------------------------------------------
-# Compared with position
-# ---------------------------------------------------------------------------
+
+# Comparison against other players in the same position
+
 HIST_METRICS = {
     "total_points": ("Total points", 10),
     "value_per_m": ("Points per £m", 2),
@@ -132,9 +132,9 @@ with compare:
                f"{player['name']}'s bin is highlighted ({title.lower()}: "
                f"{player[hist_metric]:,.1f}).")
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
+
+# Fixtures Tab Development - shows team strength
+
 with fixtures_tab:
     st.subheader(f"{team}: opponent strength by gameweek")
     st.altair_chart(charts.opponent_strength(team_fixtures(gameweek_data, team)),

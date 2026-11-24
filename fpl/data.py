@@ -1,8 +1,4 @@
-"""Data loading and preparation for the FPL app.
 
-Everything here is plain pandas, so the charts only ever receive the rows
-they need (one player, one team, one position) instead of the full dataset.
-"""
 from pathlib import Path
 
 import numpy as np
@@ -58,15 +54,13 @@ RAW_STAT_NAMES = {
 }
 
 
-# --------------------------------------------------------------------------
-# Loading
-# --------------------------------------------------------------------------
+## load_data() loads in the data for visualizations
 @st.cache_data(show_spinner="Loading FPL data…")
 def load_data(data_dir: str = str(DATA_DIR)):
     """Return (gameweek_data, players, teams)."""
     data_dir = Path(data_dir)
 
-    # Gameweek files: gw1.csv … gw38.csv (any number that exist)
+    # Gameweek files: collection of week-to-week performance
     gw_files = sorted((data_dir / "gameweeks").glob("gw*.csv"),
                       key=lambda p: int(p.stem[2:]))
     if not gw_files:
@@ -78,7 +72,7 @@ def load_data(data_dir: str = str(DATA_DIR)):
         frames.append(df)
     gameweek_data = pd.concat(frames, ignore_index=True)
 
-    # Opponent name and strength (opponent_team is the opponent's id in teams.csv)
+    # teams = Opponent name and strength
     teams = pd.read_csv(data_dir / "teams.csv")
     opponents = teams[["id", "name", "short_name", "strength"]].rename(columns={
         "id": "opponent_team", "name": "opponent_name",
@@ -87,7 +81,7 @@ def load_data(data_dir: str = str(DATA_DIR)):
     gameweek_data = gameweek_data.merge(opponents, on="opponent_team", how="left")
     gameweek_data["price"] = gameweek_data["value"] / 10
 
-    # Season totals, with the player id from player_idlist (joined on full name)
+    # Season totals, with the player ids from "player_idlist.csv" - join with players
     players = pd.read_csv(data_dir / "cleaned_players.csv")
     players["name"] = players["first_name"] + " " + players["second_name"]
     ids = pd.read_csv(data_dir / "player_idlist.csv")
@@ -109,9 +103,8 @@ def load_data(data_dir: str = str(DATA_DIR)):
     return gameweek_data, players, teams
 
 
-# --------------------------------------------------------------------------
-# Leaderboard
-# --------------------------------------------------------------------------
+## Leaderboard - creating a dataframe to create the leaderboard
+
 def leaderboard(players: pd.DataFrame, metric: str, position: str = "All",
                 team: str = "All teams", top_n: int = 10) -> pd.DataFrame:
     df = players[players["minutes"] > MIN_MINUTES]
@@ -124,9 +117,8 @@ def leaderboard(players: pd.DataFrame, metric: str, position: str = "All",
     return df
 
 
-# --------------------------------------------------------------------------
-# Player profile helpers
-# --------------------------------------------------------------------------
+# Player profile helpers - designed to provide additional information on the visualizations
+
 def player_gameweeks(gameweek_data: pd.DataFrame, player_id: int) -> pd.DataFrame:
     """One row per gameweek for a player (double gameweeks are summed)."""
     rows = gameweek_data[gameweek_data["element"] == player_id]
@@ -144,17 +136,18 @@ def player_gameweeks(gameweek_data: pd.DataFrame, player_id: int) -> pd.DataFram
     return per_gw
 
 
+## Points by category for each gameweek
 def points_breakdown(df: pd.DataFrame) -> pd.DataFrame:
     """Points per category for each gameweek row, using FPL 2025/26 scoring."""
     pos = df["position"]
     mins = df["minutes"]
     out = pd.DataFrame(index=df.index)
     out["Appearance"] = np.select([mins >= 60, mins > 0], [2, 1], 0)
-    out["Goals"] = df["goals_scored"] * pos.map({"GK": 10, "DEF": 6, "MID": 5, "FWD": 4})
-    out["Assists"] = df["assists"] * 3
-    out["Clean sheets"] = df["clean_sheets"] * pos.map({"GK": 4, "DEF": 4, "MID": 1, "FWD": 0})
-    out["Saves"] = (df["saves"] // 3) + df["penalties_saved"] * 5
-    dc_threshold = pos.map({"GK": np.inf, "DEF": 10, "MID": 12, "FWD": 12})
+    out["Goals"] = df["goals_scored"] * pos.map({"GK": 10, "DEF": 6, "MID": 5, "FWD": 4}) ## Points scored for goals based on position
+    out["Assists"] = df["assists"] * 3 ## Assist value remains constant across all positions
+    out["Clean sheets"] = df["clean_sheets"] * pos.map({"GK": 4, "DEF": 4, "MID": 1, "FWD": 0}) ## Points scored for a clean sheet
+    out["Saves"] = (df["saves"] // 3) + df["penalties_saved"] * 5 ## Goalie exclusive - penalty saves and saves
+    dc_threshold = pos.map({"GK": np.inf, "DEF": 10, "MID": 12, "FWD": 12}) ## Number of defensive contributions needed for defcon points
     out["Defensive contribution"] = np.where(df["defensive_contribution"] >= dc_threshold, 2, 0)
     out["Bonus"] = df["bonus"]
     out["Goals conceded"] = np.where(pos.isin(["GK", "DEF"]), -(df["goals_conceded"] // 2), 0)
@@ -164,6 +157,7 @@ def points_breakdown(df: pd.DataFrame) -> pd.DataFrame:
     out["Other"] += df["total_points"] - out.sum(axis=1)
     return out
 
+## Collection of raw values from each gameweek
 
 def raw_breakdown(df: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
@@ -179,6 +173,7 @@ def raw_breakdown(df: pd.DataFrame) -> pd.DataFrame:
     out["Other"] = df["own_goals"] + df["penalties_missed"]
     return out
 
+## Collection of season performance
 
 def season_breakdown(gameweek_data: pd.DataFrame, player_id: int) -> pd.DataFrame:
     """One row per category: season points, raw stat and % of points."""
@@ -198,6 +193,7 @@ def season_breakdown(gameweek_data: pd.DataFrame, player_id: int) -> pd.DataFram
     df["pct_of_net"] = df["points"] / net if net != 0 else np.nan
     return df
 
+## Percentile collection based on performance in certain categories
 
 def percentiles(players: pd.DataFrame, player_id: int) -> pd.DataFrame:
     """Percentile (0–1) for each stat, ranked within the player's position.
@@ -218,6 +214,7 @@ def percentiles(players: pd.DataFrame, player_id: int) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+## Collection of the opponent
 def team_fixtures(gameweek_data: pd.DataFrame, team: str) -> pd.DataFrame:
     rows = gameweek_data[gameweek_data["team"] == team]
     return (rows[["gameweek", "fixture", "kickoff_time", "opponent", "opponent_name",

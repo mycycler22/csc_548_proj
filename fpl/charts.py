@@ -1,9 +1,4 @@
-"""Altair charts for the player profile.
 
-Each function takes data that has already been filtered to one player, team
-or position in pandas, so there are no Altair dropdown params here: the
-Streamlit widgets do the selecting.
-"""
 import altair as alt
 import numpy as np
 import pandas as pd
@@ -13,9 +8,13 @@ from .data import BREAKDOWN_CATEGORIES, ordinal
 GREEN, AMBER, RED, GREY = "#2ca02c", "#f2b701", "#d62728", "#e6e6e6"
 HIGHLIGHT, MUTED = "#e45756", "#c7c7c7"
 
+# Each function takes data that has already been filtered to one player, team
+# or position in pandas, so there are no Altair dropdown params here: the
+# Streamlit widgets do the selecting.
+
+## Percentile Donuts
 
 def percentile_donuts(pct_df: pd.DataFrame, columns: int = 4) -> alt.FacetChart:
-    """One donut per stat, filled to the player's percentile within position."""
     df = pct_df.copy()
     df["pct_label"] = (df["pct"] * 100).round().astype(int).map(ordinal)
     df["filled"] = df["pct"]
@@ -51,6 +50,7 @@ def percentile_donuts(pct_df: pd.DataFrame, columns: int = 4) -> alt.FacetChart:
         .configure_view(stroke=None)
     )
 
+## Gameweek Line Chart
 
 def gameweek_line(per_gw: pd.DataFrame, field: str, title: str, fmt: str = ",.1~f") -> alt.Chart:
     return (
@@ -69,9 +69,9 @@ def gameweek_line(per_gw: pd.DataFrame, field: str, title: str, fmt: str = ",.1~
         .properties(height=300)
     )
 
+## Horizontal stacked bar chart - shows % of points scored in each category (ex. % of points from goals)
 
 def breakdown_bar(breakdown: pd.DataFrame) -> alt.LayerChart:
-    """Single horizontal stacked bar of season points by category."""
     df = breakdown.copy()
     df["player"] = "Season"
     bars = alt.Chart(df).mark_bar(height=44).encode(
@@ -94,10 +94,11 @@ def breakdown_bar(breakdown: pd.DataFrame) -> alt.LayerChart:
     zero = alt.Chart().mark_rule(color="black").encode(x=alt.datum(0))
     return (bars + zero).properties(height=60, padding={"bottom": 10})
 
+## Position Histogram - highlights where the player is relative to other players in that position based 
+## on metric chosen by the user. 
 
 def position_histogram(pool: pd.DataFrame, player_id: int, field: str,
                        title: str, step: float) -> alt.Chart:
-    """Histogram of a stat across the position, with the player's bin highlighted."""
     values = pool[field].astype(float)
     start = np.floor(values.min() / step) * step
     edges = np.arange(start, values.max() + step, step)
@@ -130,9 +131,9 @@ def position_histogram(pool: pd.DataFrame, player_id: int, field: str,
         .properties(height=300)
     )
 
-
+##  Line chart showing opponent strength by gameweek: 2–3 green, 4–5 red
 def opponent_strength(fixtures: pd.DataFrame) -> alt.LayerChart:
-    """Opponent strength by gameweek: 2–3 green, 4–5 red."""
+
     base = alt.Chart(fixtures).encode(
         x=alt.X("gameweek:O", title="Gameweek", axis=alt.Axis(labelAngle=0)),
         y=alt.Y("opponent_strength:Q", title="Opponent strength",

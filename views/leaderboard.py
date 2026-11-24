@@ -5,6 +5,8 @@ from fpl.state import open_profile
 
 gameweek_data, players, teams = load_data()
 
+## Header/additional information
+
 st.title("Leaderboards")
 st.caption(f"Players with more than {MIN_MINUTES} minutes this season. "
            "Click a row to open that player's profile.")
@@ -24,13 +26,12 @@ if board.empty:
     st.stop()
 
 columns = ["rank", "name", "team", "element_type", "price", "total_points"]
-if metric not in columns:                         # e.g. no second Points column for "Total points"
+if metric not in columns:                         # no second Points column for "Total points"
     columns.append(metric)
 table = board[columns].copy()
 value_col = metric
 
-# A fresh key after each click clears the row selection, so coming back to
-# this page doesn't immediately jump to the profile again.
+
 st.session_state.setdefault("lb_table_version", 0)
 event = st.dataframe(
     table,
